@@ -1,0 +1,23 @@
+# SO/IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.code-workspace
+
+# Logs/temporários
+*.log
+*.tmp
+*.cache
+
+# PHP / Composer (caso use futuramente)
+vendor/
+composer.lock
+
+# Ambiente
+.env
+.env.local
+
+# Testes/coverage (se usar)
+coverage/
+.phpunit.result.cache

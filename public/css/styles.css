@@ -1,0 +1,255 @@
+/* ===== RESET / BASE ENXUTO ===== */
+:root {
+    --cinza-900: #222;
+    --cinza-600: #555;
+    --cinza-200: #ececec;
+    --branco: #fff;
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --trans: .25s ease;
+    --max-width: 1200px;
+    --fonte-titulos: 'Montserrat', Arial, sans-serif;
+    --fonte-texto: 'Inter', system-ui, sans-serif;
+
+    --frame-color: #FFC341;
+    --frame-size: 50px;
+    --hero-min: 400px;
+    --hero-max: 480px;
+    --font-title: 'Montserrat', Arial, sans-serif;
+    --font-body: 'Inter', system-ui, sans-serif;
+}
+
+
+html,
+body {
+    height: 100%;            /* ADICIONADO: necessário para o sticky footer */
+    margin: 0;
+    font-family: var(--font-body);
+    color: #222;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+
+.site-header {
+    border: var(--frame-size) solid var(--frame-color);
+    position: relative;
+}
+
+
+.top-bar {
+    background: var(--branco);
+    box-shadow: 0 4px 12px -4px rgba(0, 0, 0, .12);
+}
+
+.nav-inner {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+    position: relative;
+}
+
+.hero-visual .hero-img {
+    width: 100%;
+    height: 100%;
+    min-height: var(--hero-min);
+    object-fit: cover;
+    filter: brightness(0.55);
+    display: block;
+}
+
+/* Caso queira limitar a largura do conteúdo futuro no hero */
+.hero-visual .hero-inner {
+    position: relative;
+    z-index: 2;
+}
+
+/* HERO */
+.hero-visual .hero-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    color: #fff;
+    pointer-events: none;
+}
+
+.hero-visual .hero-overlay a {
+    pointer-events: auto;
+}
+
+.hero-title {
+    font-family: var(--font-title);
+    font-size: clamp(1.9rem, 3.2vw, 2.5rem);
+    line-height: 1.15;
+    text-shadow: 0 3px 8px rgba(0, 0, 0, .55);
+    font-weight: 600;
+    margin: 0;
+}
+
+.hero-subtitle {
+    font-size: 1rem;
+    text-shadow: 0 2px 6px rgba(0, 0, 0, .55);
+    max-width: 540px;
+}
+
+/* BOTÃO AMARELO */
+.btn-frame {
+    --bs-btn-font-weight: 600;
+    --bs-btn-border-radius: .4rem;
+    --bs-btn-padding-x: 1.3rem;
+    --bs-btn-padding-y: .65rem;
+    --bs-btn-color: #222;
+    --bs-btn-bg: var(--frame-color);
+    --bs-btn-border-color: var(--frame-color);
+    --bs-btn-hover-color: #222;
+    --bs-btn-hover-bg: #e6a400;
+    --bs-btn-hover-border-color: #e6a400;
+    --bs-btn-active-bg: #cf9400;
+    --bs-btn-active-border-color: #cf9400;
+    box-shadow: 0 4px 10px -4px rgba(0, 0, 0, .25);
+    transition: .25s ease;
+}
+
+.btn-frame:hover {
+    box-shadow: 0 6px 16px -6px rgba(0, 0, 0, .35);
+}
+
+/* Opcional: remover sublinhado azul de links em foco no Chrome */
+.nav-link:focus,
+.btn:focus {
+    box-shadow: 0 0 0 .15rem rgba(0, 0, 0, .15);
+}
+
+/* ===== RESPONSIVO ===== */
+@media (max-width:900px) {
+    .nav-toggle {
+        display: flex;
+    }
+
+    .nav-links {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        background: var(--branco);
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 1rem 1.25rem 1.75rem;
+        width: 240px;
+        max-width: 80%;
+        box-shadow: 0 14px 28px -10px rgba(0, 0, 0, .28);
+        transform: translateX(110%);
+        opacity: 0;
+        pointer-events: none;
+        border-radius: 0 0 0 var(--radius-md);
+        transition: var(--trans);
+        z-index: 50;
+    }
+
+    .nav-links.show {
+        transform: translateX(0);
+        opacity: 1;
+        pointer-events: auto;
+    }
+}
+
+/* Animação hambúrguer */
+.nav-toggle.active span:nth-child(1) {
+    transform: translateY(8px) rotate(45deg);
+}
+
+.nav-toggle.active span:nth-child(2) {
+    opacity: 0;
+}
+
+.nav-toggle.active span:nth-child(3) {
+    transform: translateY(-8px) rotate(-45deg);
+}
+
+/* Ajuste para quando colapsado no mobile: usar fundo branco cheio */
+@media (max-width: 991.98px) {
+    .navbar-collapse {
+        background: #fff;
+        padding: 1rem 1.25rem 1.5rem;
+        margin-top: .5rem;
+        border-radius: .5rem;
+        box-shadow: 0 6px 18px -6px rgba(0, 0, 0, .2);
+    }
+}
+
+/* ===== FOOTER ===== */
+.site-footer .container-fluid { padding-left: 0; padding-right: 0; } /* garante borda a borda */
+
+.footer-box {
+  background: var(--frame-color);
+  color: #1f1f1f;
+  box-shadow: 0 6px 24px rgba(0,0,0,.15);
+  border: 1px solid rgba(0,0,0,.06);
+  border-radius: 0; /* força sem cantos quando full-width */
+}
+
+.contact-pill {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  background: rgba(255,255,255,.35);
+  color: #1f1f1f;
+  text-decoration: none;
+  padding: .8rem 1rem;
+  border-radius: .8rem;
+  border: 1px solid rgba(0,0,0,.08);
+  transition: transform .15s ease, background .15s ease, box-shadow .15s ease;
+  min-height: 56px;
+}
+.contact-pill:hover {
+  transform: translateY(-2px);
+  background: rgba(255,255,255,.55);
+  box-shadow: 0 6px 16px rgba(0,0,0,.12);
+}
+
+.contact-pill .icon {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.85);
+  border: 1px solid rgba(0,0,0,.08);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: .8rem;
+  color: #1f1f1f;
+}
+
+/* Link “Voltar ao topo” etc. */
+.footer-box .link-dark {
+  color: #1f1f1f !important;
+}
+.footer-box .link-dark:hover {
+  opacity: .8;
+}
+
+/* Responsivo */
+@media (max-width: 991.98px) {
+  .contact-pill { min-height: 52px; }
+}
+
+/* ===== STICKY FOOTER ===== */
+body {
+    display: flex;           /* body vira um container flex em coluna */
+    flex-direction: column;
+    min-height: 100vh;       /* ocupa toda a altura da viewport */
+}
+main {
+    flex: 1 0 auto;          /* o main cresce e empurra o footer para baixo */
+}
+/* Se alguma página não tiver <main>, use esta classe no wrapper da página */
+.page-content { 
+    flex: 1 0 auto;
+}
