@@ -1,31 +1,310 @@
 <?php
-// Configuração de banco e autenticação básica
-session_start();
+// Configuração central do projeto (PDO + helpers compartilhados)
 
-$DB_HOST = getenv('DB_HOST') ?: '127.0.0.1';
-$DB_NAME = getenv('DB_NAME') ?: 'tcc_topografia';
-$DB_USER = getenv('DB_USER') ?: 'root';
-$DB_PASS = getenv('DB_PASS') ?: '';
-$DB_CHARSET = 'utf8mb4';
+declare(strict_types=1);
 
-$dsn = "mysql:host=$DB_HOST;dbname=$DB_NAME;charset=$DB_CHARSET";
-$options = [
-  PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-  PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-  PDO::ATTR_EMULATE_PREPARES => false,
-];
+if (session_status() === PHP_SESSION_NONE) {
+  $secure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+  $cookieDomain = $_SERVER['HTTP_HOST'] ?? '';
+  if (strpos($cookieDomain, ':') !== false) {
+    $cookieDomain = explode(':', $cookieDomain)[0];
+  }
+  if ($cookieDomain === 'localhost' || filter_var($cookieDomain, FILTER_VALIDATE_IP)) {
+    $cookieDomain = '';
+  }
 
-try {
-  $pdo = new PDO($dsn, $DB_USER, $DB_PASS, $options);
-} catch (Throwable $e) {
-  http_response_code(500);
-  echo '<h1>Erro de conexão ao banco</h1><pre>' . htmlspecialchars($e->getMessage()) . '</pre>';
-  exit;
+  session_set_cookie_params([
+    'lifetime' => 0,
+    'path' => '/',
+    'domain' => $cookieDomain,
+    'secure' => $secure,
+    'httponly' => true,
+    'samesite' => 'Lax',
+  ]);
+
+  session_start();
 }
 
-function require_admin() {
-  if (empty($_SESSION['admin'])) {
-    header('Location: /public/login.php');
-    exit;
+require_once __DIR__ . '/../../database/init_sqlite.php';
+
+if (!function_exists('esc')) {
+  function esc(string $value): string {
+    return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+  }
+}
+
+if (!function_exists('wa_link')) {
+  function wa_link(string $number, string $message): string {
+    $digits = preg_replace('/\D+/', '', $number);
+    return $digits ? 'https://wa.me/' . $digits . '?text=' . rawurlencode($message) : '#';
+  }
+}
+
+if (!function_exists('app_env')) {
+  function app_env(string $key, ?string $default = null): ?string {
+    $value = getenv($key);
+    return $value === false ? $default : $value;
+  }
+}
+
+if (!function_exists('gmail_token_cache_path')) {
+  function gmail_token_cache_path(): string {
+    $base = app_env('GMAIL_TOKEN_CACHE') ?: (__DIR__ . '/../../storage/gmail_token.json');
+    $directory = dirname($base);
+    if (!is_dir($directory)) {
+      mkdir($directory, 0775, true);
+    }
+    return $base;
+  }
+}
+
+if (!function_exists('gmail_log_message')) {
+  function gmail_log_message(string $message): void {
+    $logFile = app_env('GMAIL_LOG_FILE') ?: (__DIR__ . '/../../storage/gmail_debug.log');
+    $directory = dirname($logFile);
+    if (!is_dir($directory)) {
+      mkdir($directory, 0775, true);
+    }
+    $line = '[' . date('c') . '] ' . $message . PHP_EOL;
+    @file_put_contents($logFile, $line, FILE_APPEND);
+  }
+}
+
+if (!function_exists('gmail_fetch_access_token')) {
+  function gmail_fetch_access_token(): ?string {
+    static $token = null;
+    static $expiresAt = 0;
+
+    if ($token && $expiresAt > (time() + 60)) {
+      return $token;
+    }
+
+    $cachePath = gmail_token_cache_path();
+    if (is_file($cachePath)) {
+      $cached = json_decode((string)file_get_contents($cachePath), true);
+      if (is_array($cached) && !empty($cached['access_token']) && !empty($cached['expires_at'])) {
+        if ((int)$cached['expires_at'] > (time() + 60)) {
+          $token = (string)$cached['access_token'];
+          $expiresAt = (int)$cached['expires_at'];
+          return $token;
+        }
+      }
+    }
+
+    $clientId = app_env('GMAIL_CLIENT_ID');
+    $clientSecret = app_env('GMAIL_CLIENT_SECRET');
+    $refreshToken = app_env('GMAIL_REFRESH_TOKEN');
+
+    if ($clientId && $clientSecret && $refreshToken) {
+      $postFields = http_build_query([
+        'client_id' => $clientId,
+        'client_secret' => $clientSecret,
+        'refresh_token' => $refreshToken,
+        'grant_type' => 'refresh_token',
+      ], '', '&', PHP_QUERY_RFC3986);
+
+      $ch = curl_init('https://oauth2.googleapis.com/token');
+      curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $postFields,
+        CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded'],
+        CURLOPT_TIMEOUT => 15,
+      ]);
+
+      $response = curl_exec($ch);
+      $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+      if ($response === false || $httpCode < 200 || $httpCode >= 300) {
+        error_log('Gmail token refresh failed: HTTP ' . $httpCode . ' Response: ' . ($response ?: curl_error($ch)));
+        gmail_log_message('Token refresh failed: HTTP ' . $httpCode . ' Response: ' . ($response ?: curl_error($ch)));
+        curl_close($ch);
+      } else {
+        curl_close($ch);
+        $data = json_decode($response, true);
+        if (is_array($data) && !empty($data['access_token']) && !empty($data['expires_in'])) {
+          $token = (string)$data['access_token'];
+          $expiresAt = time() + (int)$data['expires_in'];
+          file_put_contents($cachePath, json_encode([
+            'access_token' => $token,
+            'expires_at' => $expiresAt,
+          ], JSON_PRETTY_PRINT));
+          gmail_log_message('Token refresh ok. Expires at ' . date('c', $expiresAt));
+          return $token;
+        }
+        gmail_log_message('Token refresh unexpected response: ' . $response);
+      }
+    }
+
+    $envToken = app_env('GMAIL_API_TOKEN');
+    if ($envToken) {
+      $token = (string)$envToken;
+      $expiresAt = time() + 300;
+      gmail_log_message('Using GMAIL_API_TOKEN fallback (expires simulated in 5 min).');
+      return $token;
+    }
+
+    return null;
+  }
+}
+
+/**
+ * Retorna instância PDO compartilhada.
+ * Usa SQLite por padrão e MySQL quando indicado via variáveis de ambiente.
+ */
+if (!function_exists('db')) {
+  function db(): PDO {
+    static $pdo = null;
+
+    if ($pdo instanceof PDO) {
+      return $pdo;
+    }
+
+    $driver = strtolower((string) (app_env('DB_DRIVER') ?: 'sqlite'));
+
+    if ($driver === 'mysql') {
+      $host = app_env('DB_HOST', '127.0.0.1') ?: '127.0.0.1';
+      $name = app_env('DB_NAME', 'tcc_topografia') ?: 'tcc_topografia';
+      $user = app_env('DB_USER', 'root') ?: 'root';
+      $pass = app_env('DB_PASS', '');
+      $dsn  = sprintf('mysql:host=%s;dbname=%s;charset=utf8mb4', $host, $name);
+
+      try {
+        $pdo = new PDO($dsn, $user, $pass, [
+          PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+          PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+          PDO::ATTR_EMULATE_PREPARES => false,
+        ]);
+        return $pdo;
+      } catch (Throwable $mysqlError) {
+        // Fallback automático para SQLite caso a conexão MySQL falhe
+      }
+    }
+
+  $sqlitePath = app_env('SQLITE_PATH');
+    if (!$sqlitePath) {
+      $sqlitePath = realpath(__DIR__ . '/../../database') ?: (__DIR__ . '/../../database');
+      $sqlitePath .= DIRECTORY_SEPARATOR . 'site.sqlite';
+    }
+
+    $directory = dirname($sqlitePath);
+    if (!is_dir($directory)) {
+      mkdir($directory, 0775, true);
+    }
+
+    $pdo = new PDO('sqlite:' . $sqlitePath, null, null, [
+      PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+      PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+      PDO::ATTR_EMULATE_PREPARES => false,
+    ]);
+
+    init_sqlite_schema($pdo);
+
+    return $pdo;
+  }
+}
+
+if (!function_exists('setting')) {
+  function setting(string $key, string $default = ''): string {
+    static $cache = null;
+
+    if ($cache === null) {
+      $cache = [];
+      try {
+        $stmt = db()->query('SELECT key, value FROM settings');
+        foreach ($stmt as $row) {
+          $cache[$row['key']] = (string) $row['value'];
+        }
+      } catch (Throwable $e) {
+        // Mantém cache vazio e usa default
+      }
+    }
+
+    return $cache[$key] ?? $default;
+  }
+}
+
+if (!function_exists('is_admin_authenticated')) {
+  function is_admin_authenticated(): bool {
+    return !empty($_SESSION['admin']);
+  }
+}
+
+if (!function_exists('require_admin')) {
+  function require_admin(): void {
+    if (!is_admin_authenticated()) {
+      header('Location: /login.php');
+      exit;
+    }
+  }
+}
+
+if (!function_exists('logout_admin')) {
+  function logout_admin(): void {
+    $_SESSION = [];
+    if (ini_get('session.use_cookies')) {
+      $params = session_get_cookie_params();
+      setcookie(session_name(), '', time() - 42000, $params['path'], $params['domain'], $params['secure'], $params['httponly']);
+    }
+    session_destroy();
+  }
+}
+
+if (!function_exists('gmail_send_message')) {
+  function gmail_send_message(string $toEmail, string $subject, string $htmlBody, string $fromName = 'Site Topografia'): bool {
+    $accessToken = gmail_fetch_access_token();
+    $senderEmail = app_env('GMAIL_SENDER') ?: $toEmail;
+
+    if (!$accessToken || !$senderEmail) {
+      return false;
+    }
+
+    $encodedSubject = '=?UTF-8?B?' . base64_encode($subject) . '?=';
+    $rawMessage = implode("\r\n", [
+      'From: ' . $fromName . ' <' . $senderEmail . '>',
+      'To: ' . $toEmail,
+      'Subject: ' . $encodedSubject,
+      'MIME-Version: 1.0',
+      'Content-Type: text/html; charset=UTF-8',
+      '',
+      $htmlBody,
+    ]);
+
+    $base64 = rtrim(strtr(base64_encode($rawMessage), '+/', '-_'), '=');
+
+    $payload = json_encode(['raw' => $base64]);
+    if ($payload === false) {
+      return false;
+    }
+
+    $endpointUser = app_env('GMAIL_USER', 'me') ?: 'me';
+    $ch = curl_init('https://gmail.googleapis.com/gmail/v1/users/' . $endpointUser . '/messages/send');
+    curl_setopt_array($ch, [
+      CURLOPT_HTTPHEADER => [
+        'Authorization: Bearer ' . $accessToken,
+        'Content-Type: application/json',
+      ],
+      CURLOPT_RETURNTRANSFER => true,
+      CURLOPT_POST => true,
+      CURLOPT_POSTFIELDS => $payload,
+      CURLOPT_TIMEOUT => 15,
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    if ($response === false || $httpCode < 200 || $httpCode >= 300) {
+      error_log('Gmail API send failed: HTTP ' . $httpCode . ' Response: ' . ($response ?: curl_error($ch)));
+      gmail_log_message('Send failed for ' . $toEmail . ' | HTTP ' . $httpCode . ' | Response: ' . ($response ?: curl_error($ch)));
+      curl_close($ch);
+      return false;
+    }
+
+    curl_close($ch);
+    $decoded = json_decode((string)$response, true);
+    if (is_array($decoded) && !empty($decoded['id'])) {
+      gmail_log_message('Send ok for ' . $toEmail . ' | Gmail ID ' . $decoded['id']);
+    } else {
+      gmail_log_message('Send ok for ' . $toEmail . ' | Unexpected response: ' . $response);
+    }
+    return true;
   }
 }

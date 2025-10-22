@@ -1,15 +1,20 @@
 // JS básico do site
-console.log('Site Topografia carregado');
+// Ajusta pequenos detalhes visuais que dependem de classes dinâmicas.
 
 document.addEventListener('DOMContentLoaded', () => {
-  const toggle = document.querySelector('.nav-toggle');
-  const links = document.querySelector('.nav-links');
-  if (toggle && links) {
-    toggle.addEventListener('click', () => {
-      const aberto = toggle.getAttribute('aria-expanded') === 'true';
-      toggle.setAttribute('aria-expanded', String(!aberto));
-      toggle.classList.toggle('active');
-      links.classList.toggle('show');
-    });
-  }
+	document.querySelectorAll('.faq-qa').forEach((item) => {
+		const collapseEl = item.querySelector('.faq-collapse');
+		if (!collapseEl) return;
+
+		const setState = (isOpen) => {
+			item.classList.toggle('is-open', isOpen);
+		};
+
+		collapseEl.addEventListener('show.bs.collapse', () => setState(true));
+		collapseEl.addEventListener('hide.bs.collapse', () => setState(false));
+
+		if (collapseEl.classList.contains('show')) {
+			setState(true);
+		}
+	});
 });

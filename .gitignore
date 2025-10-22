@@ -17,6 +17,7 @@ composer.lock
 # Ambiente
 .env
 .env.local
+storage/
 
 # Testes/coverage (se usar)
 coverage/
