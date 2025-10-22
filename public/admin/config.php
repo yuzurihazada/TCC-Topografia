@@ -3,6 +3,7 @@
 
 declare(strict_types=1);
 
+// Inicializa a sessão com parâmetros seguros sempre que o arquivo for carregado.
 if (session_status() === PHP_SESSION_NONE) {
   $secure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
   $cookieDomain = $_SERVER['HTTP_HOST'] ?? '';
@@ -25,8 +26,10 @@ if (session_status() === PHP_SESSION_NONE) {
   session_start();
 }
 
+// Carrega rotina que garante a existência do banco SQLite e seeds iniciais.
 require_once __DIR__ . '/../../database/init_sqlite.php';
 
+// Helpers utilitários compartilhados entre todo o site público/admin.
 if (!function_exists('esc')) {
   function esc(string $value): string {
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
@@ -34,20 +37,29 @@ if (!function_exists('esc')) {
 }
 
 if (!function_exists('wa_link')) {
+  // Normaliza o número e gera o link oficial da API do WhatsApp com texto pré-preenchido.
   function wa_link(string $number, string $message): string {
     $digits = preg_replace('/\D+/', '', $number);
-    return $digits ? 'https://wa.me/' . $digits . '?text=' . rawurlencode($message) : '#';
+    if ($digits === '') {
+      return '#';
+    }
+
+    $encoded = rawurlencode($message);
+    return 'https://api.whatsapp.com/send?phone=' . $digits . '&text=' . $encoded;
   }
 }
 
 if (!function_exists('app_env')) {
+  // Acessa variáveis de ambiente com fallback amigável.
   function app_env(string $key, ?string $default = null): ?string {
     $value = getenv($key);
     return $value === false ? $default : $value;
   }
 }
 
+// Funções ligadas à integração com a API do Gmail (cache, logs e refresh de token).
 if (!function_exists('gmail_token_cache_path')) {
+  // Define onde o token OAuth fica armazenado no disco.
   function gmail_token_cache_path(): string {
     $base = app_env('GMAIL_TOKEN_CACHE') ?: (__DIR__ . '/../../storage/gmail_token.json');
     $directory = dirname($base);
@@ -59,6 +71,7 @@ if (!function_exists('gmail_token_cache_path')) {
 }
 
 if (!function_exists('gmail_log_message')) {
+  // Escreve logs da integração Gmail para facilitar depuração.
   function gmail_log_message(string $message): void {
     $logFile = app_env('GMAIL_LOG_FILE') ?: (__DIR__ . '/../../storage/gmail_debug.log');
     $directory = dirname($logFile);
@@ -71,15 +84,18 @@ if (!function_exists('gmail_log_message')) {
 }
 
 if (!function_exists('gmail_fetch_access_token')) {
+  // Obtém e reutiliza o token de acesso da API Gmail com cache em disco.
   function gmail_fetch_access_token(): ?string {
     static $token = null;
     static $expiresAt = 0;
 
+    // Reaproveita token ainda válido em memória para evitar roundtrips.
     if ($token && $expiresAt > (time() + 60)) {
       return $token;
     }
 
     $cachePath = gmail_token_cache_path();
+    // Prioriza o token salvo em arquivo, evitando chamadas repetidas ao Google.
     if (is_file($cachePath)) {
       $cached = json_decode((string)file_get_contents($cachePath), true);
       if (is_array($cached) && !empty($cached['access_token']) && !empty($cached['expires_at'])) {
@@ -95,6 +111,7 @@ if (!function_exists('gmail_fetch_access_token')) {
     $clientSecret = app_env('GMAIL_CLIENT_SECRET');
     $refreshToken = app_env('GMAIL_REFRESH_TOKEN');
 
+    // Caso todas as credenciais estejam presentes, solicita um novo token.
     if ($clientId && $clientSecret && $refreshToken) {
       $postFields = http_build_query([
         'client_id' => $clientId,
@@ -155,6 +172,7 @@ if (!function_exists('db')) {
   function db(): PDO {
     static $pdo = null;
 
+    // Retorna a mesma conexão durante toda a requisição para economizar recursos.
     if ($pdo instanceof PDO) {
       return $pdo;
     }
@@ -162,6 +180,7 @@ if (!function_exists('db')) {
     $driver = strtolower((string) (app_env('DB_DRIVER') ?: 'sqlite'));
 
     if ($driver === 'mysql') {
+      // Configuração prioritária: conecta no MySQL quando informado via ambiente.
       $host = app_env('DB_HOST', '127.0.0.1') ?: '127.0.0.1';
       $name = app_env('DB_NAME', 'tcc_topografia') ?: 'tcc_topografia';
       $user = app_env('DB_USER', 'root') ?: 'root';
@@ -180,6 +199,7 @@ if (!function_exists('db')) {
       }
     }
 
+    // Caminho do banco SQLite que funciona por padrão em qualquer ambiente.
   $sqlitePath = app_env('SQLITE_PATH');
     if (!$sqlitePath) {
       $sqlitePath = realpath(__DIR__ . '/../../database') ?: (__DIR__ . '/../../database');
@@ -197,12 +217,14 @@ if (!function_exists('db')) {
       PDO::ATTR_EMULATE_PREPARES => false,
     ]);
 
+    // Garante que as tabelas existam e estejam na versão atual.
     init_sqlite_schema($pdo);
 
     return $pdo;
   }
 }
 
+// Recupera configurações armazenadas no banco com cache simples em memória.
 if (!function_exists('setting')) {
   function setting(string $key, string $default = ''): string {
     static $cache = null;
@@ -223,6 +245,7 @@ if (!function_exists('setting')) {
   }
 }
 
+// Auxiliares de autenticação usados pelo painel administrativo.
 if (!function_exists('is_admin_authenticated')) {
   function is_admin_authenticated(): bool {
     return !empty($_SESSION['admin']);
@@ -239,6 +262,7 @@ if (!function_exists('require_admin')) {
 }
 
 if (!function_exists('logout_admin')) {
+  // Limpa sessão e cookies para encerrar o login administrativo.
   function logout_admin(): void {
     $_SESSION = [];
     if (ini_get('session.use_cookies')) {
@@ -249,16 +273,19 @@ if (!function_exists('logout_admin')) {
   }
 }
 
+// Envia e-mails usando a API Gmail autenticada com OAuth.
 if (!function_exists('gmail_send_message')) {
   function gmail_send_message(string $toEmail, string $subject, string $htmlBody, string $fromName = 'Site Topografia'): bool {
     $accessToken = gmail_fetch_access_token();
     $senderEmail = app_env('GMAIL_SENDER') ?: $toEmail;
 
+    // Sem token válido ou remetente configurado não é possível disparar o e-mail.
     if (!$accessToken || !$senderEmail) {
       return false;
     }
 
     $encodedSubject = '=?UTF-8?B?' . base64_encode($subject) . '?=';
+    // Monta o e-mail completo conforme RFC822 para o endpoint do Gmail.
     $rawMessage = implode("\r\n", [
       'From: ' . $fromName . ' <' . $senderEmail . '>',
       'To: ' . $toEmail,
@@ -269,6 +296,7 @@ if (!function_exists('gmail_send_message')) {
       $htmlBody,
     ]);
 
+    // Gmail exige base64 URL-safe para aceitar o payload.
     $base64 = rtrim(strtr(base64_encode($rawMessage), '+/', '-_'), '=');
 
     $payload = json_encode(['raw' => $base64]);
@@ -300,6 +328,7 @@ if (!function_exists('gmail_send_message')) {
 
     curl_close($ch);
     $decoded = json_decode((string)$response, true);
+    // Registra em log o ID retornado pelo Gmail para rastreabilidade.
     if (is_array($decoded) && !empty($decoded['id'])) {
       gmail_log_message('Send ok for ' . $toEmail . ' | Gmail ID ' . $decoded['id']);
     } else {
