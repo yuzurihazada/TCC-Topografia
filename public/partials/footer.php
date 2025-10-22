@@ -27,7 +27,12 @@ if (!function_exists('esc')) {
 if (!function_exists('wa_link')) {
   function wa_link(string $number, string $message): string {
     $digits = preg_replace('/\D+/', '', $number);
-    return $digits ? ('https://wa.me/' . $digits . '?text=' . rawurlencode($message)) : '#';
+    if ($digits === '') {
+      return '#';
+    }
+
+    $encoded = rawurlencode($message);
+    return 'https://api.whatsapp.com/send?phone=' . $digits . '&text=' . $encoded;
   }
 }
 

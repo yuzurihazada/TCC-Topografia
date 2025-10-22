@@ -1,11 +1,13 @@
 <?php
 require __DIR__ . '/admin/config.php';
 
+// Busca todos os serviços ativos para montar a vitrine da página pública.
 $servicos = [];
 try {
   $stmt = db()->query('SELECT id, titulo, descricao, preco FROM servicos WHERE active = 1 ORDER BY order_index ASC, id DESC');
   $servicos = $stmt->fetchAll();
 } catch (Throwable $e) {
+  // Evita quebrar a página caso o banco não responda.
   $servicos = [];
 }
 ?>
@@ -32,10 +34,12 @@ try {
         </div>
 
       <?php if (!$servicos): ?>
+        <!-- Fallback quando não há serviços cadastrados -->
         <div class="surface-card surface-card--compact text-center text-muted">Em breve publicaremos nossos serviços.</div>
       <?php else: ?>
         <div class="row g-4">
           <?php foreach ($servicos as $s): ?>
+            <!-- Card individual com dados vindos do banco -->
             <div class="col-md-6 col-lg-4">
                 <article class="surface-card surface-card--compact service-card">
                   <h2 class="service-card__title"><?= esc($s['titulo']) ?></h2>
@@ -44,7 +48,7 @@ try {
                     <?php if (!is_null($s['preco'])): ?>
                       <span class="badge text-uppercase service-card__badge">A partir de R$ <?= number_format((float)$s['preco'], 2, ',', '.') ?></span>
                     <?php endif; ?>
-                    <a href="/contato.php?servico=<?= urlencode($s['titulo']) ?>" class="btn btn-frame">Contatar serviço</a>
+                    <a href="/contato.php?servico=<?= urlencode($s['titulo']) ?>" class="btn btn-frame">Contatar</a>
                   </div>
                 </article>
             </div>

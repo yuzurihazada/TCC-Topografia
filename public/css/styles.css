@@ -1,12 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@500;600;700&display=swap');
 
+/* ============================================================
+    Tokens de tema
+    Centraliza cores, espaçamentos e escalas tipográficas.
+============================================================ */
 :root {
-    --cinza-900: #222;
-    --cinza-600: #555;
-    --cinza-200: #ececec;
-    --branco: #fff;
-    --radius-sm: 4px;
-    --radius-md: 8px;
     --trans: .25s ease;
     --max-width: 1200px;
 
@@ -19,10 +17,8 @@
     --color-text-muted: #4A5B4F;
     --divider-color: #1F3527;
 
-    --frame-color: var(--color-primary);
     --frame-size: clamp(24px, 6vw, 50px);
     --hero-min: 400px;
-    --hero-max: 480px;
     --font-title: 'Montserrat', Arial, sans-serif;
     --font-body: 'Inter', system-ui, sans-serif;
     --app-bg: linear-gradient(180deg, #f2f8f4 0%, #e3efe7 100%);
@@ -31,21 +27,30 @@
     --gradient-deep: linear-gradient(135deg, #2E4D3A 0%, #1F3527 100%);
 }
 
+/* ============================================================
+    Layout global
+    Estrutura base compartilhada pelas páginas públicas.
+============================================================ */
 html {
     min-height: 100%;
     background: var(--app-bg);
 }
 
+/* Estrutura mantém o rodapé fixado mesmo com pouco conteúdo */
 body {
     min-height: 100vh;
     margin: 0;
     font-family: var(--font-body);
     color: var(--color-text);
     background: transparent;
+    display: flex;
+    flex-direction: column;
 }
 * { box-sizing: border-box; }
 
-/* HEADER */
+/* ============================================================
+    Cabeçalho e navegação
+============================================================ */
 .site-header {
     border: var(--frame-size) solid transparent;
     border-image: var(--gradient-frame) 1;
@@ -53,7 +58,7 @@ body {
     background: var(--gradient-soft);
     box-shadow: inset 0 1px 0 rgba(255,255,255,.65);
 }
-/* Linha após header */
+/* Linha divisória logo após o cabeçalho */
 .header-divider {
     height: 3px;
     min-height: 3px;
@@ -68,6 +73,7 @@ body {
     z-index: 2;
 }
 
+/* Container do menu principal com blur e borda em gradiente */
 .site-nav {
     background: transparent;
     backdrop-filter: blur(8px);
@@ -81,9 +87,11 @@ body {
     padding: .25rem 0;
 }
 
+/* Hero exibido na página inicial */
 .hero-visual {
     position: relative;
 }
+/* Imagem de destaque ocupa todo o espaço do hero */
 .hero-visual .hero-img {
     width: 100%;
     height: 100%;
@@ -116,7 +124,7 @@ body {
     max-width: 540px;
 }
 
-/* BOTÃO PRINCIPAL */
+/* Botões principais de CTA */
 .btn-frame {
     --bs-btn-font-weight: 600;
     --bs-btn-border-radius: .5rem;
@@ -137,6 +145,7 @@ body {
 .btn-frame:hover {
     box-shadow: 0 6px 18px -6px rgba(0,0,0,.4);
 }
+/* Mantém contraste adequado quando o botão recebe foco/clique */
 .btn-frame:focus,
 .btn-frame:active {
     color: #fff !important;
@@ -145,7 +154,7 @@ body {
     box-shadow: 0 0 0 .2rem rgba(88,163,104,.35);
 }
 
-/* BOTÃO OUTLINE COM MESMA ALTURA/ALINHAMENTO DO .btn-frame */
+/* Variante outline mantém altura alinhada ao .btn-frame */
 .btn-frame-outline {
     --bs-btn-font-weight: 600;
     --bs-btn-border-radius: .5rem;
@@ -171,11 +180,12 @@ body {
     box-shadow: 0 0 0 .2rem rgba(88,163,104,.35);
 }
 
-/* NAV LINKS */
+/* Links da navegação */
 .navbar-light.site-nav .navbar-nav .nav-link {
     color: var(--color-text);
     transition: color .2s ease;
 }
+/* Direciona atenção para o link ativo/hover usando verde da marca */
 .navbar-light.site-nav .navbar-nav .nav-link:hover {
     color: var(--color-accent-hover);
 }
@@ -203,7 +213,7 @@ body {
     min-height: 42px;
 }
 
-/* Collapse visual */
+/* Aparência do menu colapsado */
 @media (max-width: 991.98px) {
     .navbar-collapse {
         background: var(--gradient-soft);
@@ -214,7 +224,7 @@ body {
     }
 }
 
-/* Linha antes do footer */
+/* Linha divisória antes do rodapé */
 .footer-divider {
     height: 3px;
     min-height: 3px;
@@ -224,7 +234,9 @@ body {
     display: block;
 }
 
-/* FOOTER */
+/* ============================================================
+    Rodapé e atalhos sociais
+============================================================ */
 .site-footer {
         background: var(--gradient-deep);
         color: rgba(255,255,255,.9);
@@ -245,6 +257,7 @@ body {
 }
 .footer-box a:hover { opacity: .85; }
 
+/* Botões em forma de pílula usados para redes sociais e contato rápido */
 .contact-pill {
   display: flex;
   align-items: center;
@@ -278,21 +291,19 @@ body {
   font-size: .8rem;
   color: var(--color-primary-dark);
 }
-/* Aumenta levemente o tamanho dos ícones nas pílulas de contato */
+/* Ícones levemente maiores nas pílulas de contato */
 .contact-pill .icon i { font-size: 1.15rem; }
 @media (max-width: 991.98px) {
   .contact-pill { min-height: 52px; }
 }
 
-body {
-    display: flex;
-    flex-direction: column;
-}
+/* Mantém o conteúdo principal expandido entre header e footer */
 main,
 .page-content { flex: 1 0 auto; }
 
 main.page-content { background: transparent; }
 
+/* Títulos de seção reutilizados nas páginas */
 .page-content .section-heading {
     display: flex;
     align-items: center;
@@ -313,6 +324,7 @@ main.page-content { background: transparent; }
     flex-shrink: 0;
 }
 
+/* Card reutilizável com borda suave e shadow leve */
 .surface-card {
     background: #fff;
     border-radius: 1.25rem;
@@ -323,7 +335,9 @@ main.page-content { background: transparent; }
 
 .surface-card + .surface-card { margin-top: 1.75rem; }
 
-/* ===== Carousel ===== */
+/* ============================================================
+    Controles do carrossel de depoimentos
+============================================================ */
 .carousel-control-prev,
 .carousel-control-next {
     width: 3.25rem;
@@ -349,7 +363,9 @@ main.page-content { background: transparent; }
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='%232E4D3A' viewBox='0 0 16 16'%3e%3cpath d='M4.646 1.146a.5.5 0 0 0 0 .708L10.793 8l-6.147 6.146a.5.5 0 0 0 .708.708l6.5-6.5a.5.5 0 0 0 0-.708l-6.5-6.5a.5.5 0 0 0-.708 0z'/%3e%3c/svg%3e");
 }
 
-/* ===== Serviços ===== */
+/* ============================================================
+    Listagem de serviços
+============================================================ */
 .services-page .section-title {
   font-family: var(--font-title);
   font-weight: 700;
@@ -361,9 +377,10 @@ main.page-content { background: transparent; }
   background: var(--divider-color);
   opacity: 1;
 }
-.service-block:last-child .section-divider { display: none; }
 
-/* ===== FAQ (PAA) ===== */
+/* ============================================================
+    Acordeão de FAQ (página pública)
+============================================================ */
 .faq-ppa {
     display: grid;
     gap: 1rem;
@@ -517,7 +534,44 @@ main.page-content { background: transparent; }
     }
 }
 
-/* ===== Contato ===== */
+/* ============================================================
+    Página de contato
+============================================================ */
+/* Botão vermelho usado para envio via Gmail */
+.btn-gmail {
+    background: #EA4335;
+    border-color: #EA4335;
+    color: #fff;
+}
+
+.btn-gmail:hover,
+.btn-gmail:focus {
+    background: #cf2a21;
+    border-color: #cf2a21;
+    color: #fff;
+    box-shadow: 0 0 0 .25rem rgba(234, 67, 53, .2);
+}
+
+/* Botão verde dedicado ao envio pelo WhatsApp */
+.btn-whatsapp-submit {
+    background: #25D366;
+    border-color: #25D366;
+    color: #fff;
+}
+
+.btn-whatsapp-submit:hover,
+.btn-whatsapp-submit:focus {
+    background: #1ebe57;
+    border-color: #1ebe57;
+    color: #fff;
+    box-shadow: 0 0 0 .25rem rgba(37, 211, 102, .2);
+}
+
+.btn-gmail .bi,
+.btn-whatsapp-submit .bi {
+    font-size: 1.05rem;
+}
+
 .contact-section {
     position: relative;
 }
@@ -605,11 +659,6 @@ main.page-content { background: transparent; }
     padding: clamp(2rem, 3vw, 2.8rem);
     box-shadow: inset 0 1px 0 rgba(255,255,255,.6);
 }
-
-.contact-card {
-    background: #fff;
-}
-
 
 .contact-quick strong {
     display: block;
@@ -774,11 +823,9 @@ main.page-content { background: transparent; }
     height: 0;
 }
 
-@media (max-width: 575.98px) {
-    .contact-shell { padding: 1.75rem 1.5rem; }
-}
-
-/* ===== Responsive Tweaks ===== */
+/* ============================================================
+    Ajustes responsivos
+============================================================ */
 @media (max-width: 767.98px) {
     .page-content .section-heading {
         flex-direction: column;
@@ -883,7 +930,10 @@ main.page-content { background: transparent; }
     }
 }
 
-/* ===== Login/Admin ===== */
+/* ============================================================
+    Layout de autenticação (login)
+============================================================ */
+/* Fundo com gradientes suaves para o login */
 .auth-page {
     min-height: 100vh;
     display: flex;
@@ -948,6 +998,7 @@ main.page-content { background: transparent; }
     border: 1px solid rgba(255,255,255,.25);
 }
 
+/* Painel branco que abriga o formulário de login */
 .auth-panel--form {
     background: #fff;
     border: 1px solid rgba(24,35,27,.08);
@@ -955,6 +1006,7 @@ main.page-content { background: transparent; }
     align-items: center;
 }
 
+/* Cartão translúcido que envolve os campos do formulário */
 .auth-card {
     width: 100%;
     max-width: 420px;
@@ -1013,6 +1065,7 @@ main.page-content { background: transparent; }
     gap: .8rem;
 }
 
+/* Lista de diferenciais apresentada no painel verde */
 .auth-highlights li {
     display: flex;
     align-items: flex-start;
